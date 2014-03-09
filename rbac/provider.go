@@ -1,17 +1,18 @@
 package rbac
 
-import ()
+import (
+	"sort"
+)
 
 type RoleProvider interface {
-	Init()
 	CreateRole(rolename string, desc string) (*Role, error)
 	GetRoleByName(rolename string) *Role
 	DropRole(rolename string) error
 	RoleDesc(rolename string) (string, error)
 	SetRoleDesc(rolename string, desc string) error
-	AllRoleNames() []string
-	RolesByIdent(identname string) ([]string, error)
-	PermsByRole(rolename string) ([]string, error)
+	AllRoleNames() []string                         //return all roles
+	RolesByIdent(identname string) sort.StringSlice //return directly granted roles
+	PermsByRole(rolename string) sort.StringSlice
 	IdentGrantRole(identname string, rolename string) error
 	IdentRevokeRole(identname string, rolename string) error
 	RoleGrantPerm(rolename string, permname string) error
@@ -27,16 +28,14 @@ type RoleProvider interface {
 }
 
 type IdentProvider interface {
-	Init()
 	GetIdentByName(name string) (Identity, error)
 }
 
 type PermProvider interface {
-	Init()
 	SavePerm(perm Permission) error
 	DelPermByName(permname string) error
 	GetPermByName(permname string) Permission
-	PermByResGuid(resguid string) []*ResourcePermission
+	PermsByResGuid(resguid string) []*ResourcePermission
 }
 
 type RBACProvider interface {

@@ -10,4 +10,6 @@ var (
 	ErrorPermNotExist = errors.New("Permission does not exist")
 	ErrorDuplicateRole = errors.New("Role already exists")
 	ErrorDuplicatePerm = errors.New("Permission already granted")
+	ErrorAlreadyGranted = errors.New("Role already granted to ident")
+	ErrorRoleNotGranted = errors.New("Role is not granted to ident")
 )
