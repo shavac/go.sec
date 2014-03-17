@@ -44,7 +44,7 @@ func NewUserRoleMap() UserRoleMap {
 }
 
 type RoleContainer struct {
-	roles        map[string]string           //contains all roles
+	roles        map[string]*rbac.Role           //contains all roles
 	roleGraph    map[string]sort.StringSlice //contains role to role relationship
 	rolePermMap  map[string]sort.StringSlice //map[rolename][]permname
 	identRoleMap map[string]sort.StringSlice //map[identname][]rolename

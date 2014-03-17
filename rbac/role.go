@@ -1,17 +1,20 @@
 package rbac
 
-import ()
+import (
+	"strings"
+)
 
 type Role struct {
-	name     string
-	provider RoleProvider
+	name string
+	desc string
 }
 
-func MakeRole(name string, provider RoleProvider) *Role{
-	return &Role{
-		name:name,
-		provider: provider,
-	}
+func NewRole(rolename, desc string) (*Role, error) {
+	return roleProvider.CreateRole(strings.ToUpper(rolename), desc)
+}
+
+func GetRoleByName(rolename string) *Role {
+	return roleProvider.GetRoleByName(rolename)
 }
 
 func (r *Role) Type() int {
@@ -22,29 +25,45 @@ func (r *Role) Name() string {
 	return r.name
 }
 
+func (r *Role) AuthzCode() string {
+	return "ROLE_" + r.name
+}
+
 func (r *Role) Desc() string {
-	if d, err := r.provider.RoleDesc(r.Name()); err== nil {
-		return d
+	return r.desc
+}
+
+func (r *Role) Equals(a authz) bool {
+	return r.AuthzCode() == a.AuthzCode()
+}
+
+func (r *Role) Contains(a authz) bool {
+	return roleProvider.RoleContainsAuthz(r.Name(), a.AuthzCode())
+}
+
+func (r *Role) BelongsTo(a authz) bool {
+	switch a.Type() {
+	case IDENT:
+		return roleProvider.IdentHasRole(a.Name(), r.Name())
+	case ROLE:
+		return roleProvider.RoleContainsAuthz(a.Name(), r.AuthzCode())
+	default:
+		return false
 	}
-	return ""
 }
 
-func (r *Role) GrantPerm(permname string) error {
-	return r.provider.RoleGrantPerm(r.Name(), permname)
+func (r *Role) Grant(aut authz) error {
+	return roleProvider.RoleGrantAuthz(r.Name(), aut.AuthzCode())
 }
 
-func (r *Role) GrantRole(rolename string) error {
-	return r.provider.RoleGrantRole(r.Name(), rolename)
-}
-
-func (r *Role) RevokePerm(permname string) error {
-	return r.provider.RoleRevokePerm(r.Name(), permname)
-}
-
-func (r *Role) RevokeRole(rolename string) error {
-	return r.provider.RoleRevokeRole(r.Name(), rolename)
+func (r *Role) Revoke(aut authz) error {
+	return roleProvider.RoleRevokeAuthz(r.Name(), aut.AuthzCode())
 }
 
 func (r *Role) Drop() error {
-	return r.provider.DropRole(r.Name())
+	err := roleProvider.DropRole(r.Name())
+	if err == nil {
+		r = nil
+	}
+	return err
 }
