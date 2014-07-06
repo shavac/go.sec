@@ -11,7 +11,7 @@ type Engine interface {
 	HasRole(roleName, hasRoleName string) bool
 	HasAllRole(roleName string, hasRoleNames ...string) bool
 	HasAnyRole(roleName string, hasRoleNames ...string) bool
-	RBACDecision(roleName, res string, ops ...string) bool
+	//RBACDecision(roleName, res string, ops ...string) bool
 	GrantRole(grantee, granted string) error
 	GrantPerm(grantee, op, res string) error
 }

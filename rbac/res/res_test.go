@@ -1,15 +1,15 @@
-package rbac
+package res
 
 import (
 	"testing"
 )
 
 func TestURLRes(t *testing.T) {
-	u1, _ := NewURLRes("root", "/")
-	u2, _ := NewURLRes("usr", "/usr")
-	u3, _ := NewURLRes("ulib", "/usr/lib")
-	u4, _ := NewURLRes("var", "/var")
-	u2c, _ := NewURLRes("usr", "/usr")
+	u1, _ := ParseURLRes("root", "/")
+	u2, _ := ParseURLRes("usr", "/usr")
+	u3, _ := ParseURLRes("ulib", "/usr/lib")
+	u4, _ := ParseURLRes("var", "/var")
+	u2c, _ := ParseURLRes("usr", "/usr")
 	if u1.Equals(u2) {
 		t.Fatal("u1 should not equal u2")
 	}

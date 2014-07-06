@@ -1,7 +1,7 @@
 package mem
 
 import (
-	//"github.com/shavac/go.sec/rbac/errs"
+//"github.com/shavac/go.sec/rbac/errs"
 )
 
 var (
@@ -26,11 +26,11 @@ func (e *engine) GetVersion() int64 {
 func (e *engine) IncVersion() {
 }
 
-func (e *engine)GetRole(roleName string) (bool, int, string) {
+func (e *engine) GetRole(roleName string) (bool, int, string) {
 	return false, 0, ""
 }
 
-func (e *engine)SaveRole(roleName string, roleType int, desc string) bool {
+func (e *engine) SaveRole(roleName string, roleType int, desc string) bool {
 	return false
 }
 
@@ -59,7 +59,7 @@ func (e *engine) GetOpsByRes(res string) []string {
 }
 
 func (e *engine) GetPermsByRole(roleName string) ([]string, []string) {
-	return nil,nil
+	return nil, nil
 }
 
 func (e *engine) RBACDecision(roleName, res string, ops ...string) bool {

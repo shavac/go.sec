@@ -45,15 +45,11 @@ func GetPermsByRole(roleName string) []Perm {
 		return nil
 	}
 	for i, op := range ops {
-		if res, err := ResParser.Parse("", res[i]); err == nil {
-			perms=append(perms, Perm{op, res})
+		if ps, err := NewPerm(res[i], op); err == nil {
+			perms=append(perms, ps...)
 		}
 	}
 	return perms
-}
-
-func RBACDecision(roleName, res string, ops ...string) bool {
-	return engine.RBACDecision(roleName, res, ops...)
 }
 
 func GrantRole(grantee, granted string) error {
@@ -63,6 +59,12 @@ func GrantRole(grantee, granted string) error {
 func GrantPerm(roleName, op, res string) error {
 	return engine.GrantPerm(roleName, op, res)
 }
+
+
+
+
+
+
 
 
 

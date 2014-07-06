@@ -1,6 +1,7 @@
 package rbac
 
 import (
+	. "github.com/shavac/go.sec/rbac/res"
 )
 
 type Perm struct {
