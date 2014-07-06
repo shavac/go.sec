@@ -1,69 +1,65 @@
 package rbac
 
 import (
-	"strings"
+	"github.com/shavac/go.sec/rbac/errs"
 )
 
 type Role struct {
-	name string
-	desc string
+	name     string
+	roleType int
+	desc     string
 }
 
-func NewRole(rolename, desc string) (*Role, error) {
-	return roleProvider.CreateRole(strings.ToUpper(rolename), desc)
+func NewRole(roleName string) (*Role, error) {
+	if exist, rType, rDesc:= engine.GetRole(roleName); ! exist {
+		return &Role{name: roleName, roleType: ROLE}, nil
+	} else {
+		return &Role{name: roleName, roleType: rType, desc: rDesc}, errs.ErrDupRole
+	}
 }
 
-func GetRoleByName(rolename string) *Role {
-	return roleProvider.GetRoleByName(rolename)
-}
-
-func (r *Role) Type() int {
-	return ROLE
+func (r *Role) RBACType() int {
+	return r.roleType
 }
 
 func (r *Role) Name() string {
 	return r.name
 }
 
-func (r *Role) AuthzCode() string {
-	return "ROLE_" + r.name
-}
-
 func (r *Role) Desc() string {
 	return r.desc
 }
 
-func (r *Role) Equals(a authz) bool {
-	return r.AuthzCode() == a.AuthzCode()
+func (r *Role) SetDesc(desc string) {
+	r.desc = desc
 }
 
-func (r *Role) Contains(a authz) bool {
-	return roleProvider.RoleContainsAuthz(r.Name(), a.AuthzCode())
-}
-
-func (r *Role) BelongsTo(a authz) bool {
-	switch a.Type() {
-	case IDENT:
-		return roleProvider.IdentHasRole(a.Name(), r.Name())
-	case ROLE:
-		return roleProvider.RoleContainsAuthz(a.Name(), r.AuthzCode())
-	default:
-		return false
+func (r *Role) Grant(aus ...authz) error {
+	for _, au:= range aus {
+		switch a := au.(type) {
+		case *User:
+			return errs.ErrNotGrantable
+		case *Role:
+			if err := GrantRole(r.Name(), a.Name()); err != nil {
+				return err
+			}
+		case *Perm:
+			if err := GrantPerm(r.Name(), a.Op(), a.Res().String()); err != nil {
+				return err
+			}
+		}
 	}
+	return nil
 }
 
-func (r *Role) Grant(aut authz) error {
-	return roleProvider.RoleGrantAuthz(r.Name(), aut.AuthzCode())
-}
-
-func (r *Role) Revoke(aut authz) error {
-	return roleProvider.RoleRevokeAuthz(r.Name(), aut.AuthzCode())
+func (r *Role) Revoke(au ...authz) error {
+	return nil
 }
 
 func (r *Role) Drop() error {
-	err := roleProvider.DropRole(r.Name())
-	if err == nil {
-		r = nil
-	}
-	return err
+	return nil
+}
+
+func (r *Role) Save() bool {
+	return engine.SaveRole(r.Name(), r.RBACType(), r.Desc())
 }

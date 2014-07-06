@@ -1,20 +1,20 @@
-// Package rbac provides rbac apis. Engines shall implemented in other packages.
 package rbac
 
+// interface for user/role/permission
 const (
-	IDENT = iota
+	USER = iota
 	ROLE
 	PERM
+	PERMEX
 )
 
-//authz includes role, permission
-//authzcode must be unique
-
 type authz interface {
-	Type() int
+	RBACType() int
+}
+
+type userRole interface {
+	authz
 	Name() string
-	AuthzCode() string
-	Equals(authz) bool
-	Contains(authz) bool
-	BelongsTo(authz) bool
+	Grant(...authz) error
+	Revoke(...authz) error
 }
