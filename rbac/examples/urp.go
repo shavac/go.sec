@@ -1,43 +1,55 @@
 package main
 
 import (
-	"fmt"
 	"github.com/shavac/go.sec/rbac"
+	"log"
 )
 
 func main() {
 	if err := rbac.Init("DEFAULT"); err != nil {
-		fmt.Fatal(err.Error())
+		log.Fatal(err.Error())
 	}
-	User1, _ := rbac.NewUser("user1")
-	User2, _ := rbac.NewUser("user2")
-	User3, _ := rbac.NewUser("user3")
+	user1, _ := rbac.NewUser("user1")
+	user2, _ := rbac.NewUser("user2")
+	user3, _ := rbac.NewUser("user3")
 	roleCEO, _ := rbac.NewRole("ceo")
 	roleHrManager, _ := rbac.NewRole("hr_mgr")
 	roleHrClerk, _ := rbac.NewRole("hr_clerk")
-	resEmployee, _ := rbac.NewRes("employee", "oracle://scott:tiger@localhost:1521/scott/emp")
+	rbac.NewRes("all", "oracle://scott:tiger@localhost:1521/scott")
+	rbac.NewRes("employee", "oracle://scott:tiger@localhost:1521/scott/emp")
 	permSelectEmployee, _ := rbac.NewPerm("employee", "select")
-	permUpdateEmployee, _ := rbac.NewPerm("employee", "insert","update","delete")
-	permMeeting, _ := rbac.NewSysPerm("have_meeting")
-	rbac.GrantSysPerm("ceo","dismiss_meeting")
-	User2.Grant(roleHrManager)
-	User1.Grant(roleHrClerk)
+	permDeleteEmployee, _ := rbac.NewPerm("employee", "delete")
+	permsUpdateEmployee, _ := rbac.NewPermSet("employee", "update", "insert", "delete")
+	permsAllOnAll, _ := rbac.NewPermSet("all", "select", "update", "insert", "delete")
+	permMeeting, _ := rbac.NewSysPerm("start_meeting")
+	rbac.GrantSysPerm("ceo", "dismiss_meeting")
+	user2.Grant(roleHrManager)
+	user1.Grant(roleHrClerk)
+	rbac.GrantRole("user3", "ceo")
 	roleCEO.Grant(permMeeting)
-	roleCEO.Grant(roleHrManager)
-	rbac.GrantRole("hr_manager","hr_clerk")
-	rbac.GrantPerm("hr_clerk", "employee","select")
-	roleHrManager.Grant(permUpdateEmployee)
-	rbac.GrantPerm("hr_manager", "employee","delete")
-	if !rbac.HasRole("user1", "hr_clerk") || !roleHrManager.HasRole(roleHrClerk) {
-		fmt.Fatal("user1 and hr_manager should have hr_clerk role")
+	roleCEO.Grant(permsAllOnAll)
+	rbac.GrantRole("hr_manager", "hr_clerk")
+	rbac.GrantPerm("hr_clerk", "employee", "select")
+	roleHrManager.Grant(permsUpdateEmployee)
+	roleHrManager.Revoke(permDeleteEmployee)
+	rbac.RevokePerm("hr_manager", "employee", "delete")
+	if !rbac.HasRole("user1", "hr_clerk") || !user1.HasRole(roleHrClerk) || !user1.HasPerm(permSelectEmployee) {
+		log.Fatal("user1 and hr_manager should have hr_clerk role and select on employee permission")
 	}
-	if !rbac.ResAccessDecision("user1", "employee", "delete") || !User1.HasPerm(permDeleteEmployee) {
-		fmt.Fatal("user1 should have delete employee permission")
+	if !rbac.RBACDecision("user1", "employee", "delete") || !user1.HasPerm(permDeleteEmployee) {
+		log.Fatal("user1 should have delete employee permission")
 	}
-	if rbac.ResAccessDecision("user3", "employee", "delete") || User3.HasPerm(permDeleteEmployee) {
-		fmt.Fatal("user3 should not have delete employee permission")
+	if !rbac.RBACDecision("user3", "employee", "delete") || ! user3.HasPerm(permsUpdateEmployee) {
+		log.Fatal("user3 is ceo and should have delete employee permission")
 	}
-	if rbac.ResAccessDecision("hr_clerk", "employee", "update", "insert", "delete") || roleHrClerk.HasPerm(permUpdateEmployee) {
-		fmt.Fatal("hr_clerk should not have update employee permission")
+	if rbac.RBACDecision("hr_clerk", "employee", "update", "insert", "delete") || roleHrClerk.HasPerm(permsUpdateEmployee) {
+		log.Fatal("hr_clerk should not have update employee permission")
 	}
 }
+
+
+
+
+
+
+

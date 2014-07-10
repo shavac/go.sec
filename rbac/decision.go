@@ -1,6 +1,6 @@
 package rbac
 
-import(
+import (
 	. "github.com/shavac/go.sec/rbac/res"
 )
 
@@ -9,8 +9,8 @@ func RBACDecision(roleName, resString string, ops ...string) bool {
 	if err != nil {
 		return false
 	}
-	pms := GetPermsByRole(roleName)
-	filtedPerms := []Perm{}
+	pms := GetPermSetByRole(roleName)
+	filtedPerms := PermSet{}
 	for _, perm := range pms {
 		if perm.Res().Includes(res) {
 			filtedPerms = append(filtedPerms, perm)
@@ -27,4 +27,3 @@ func RBACDecision(roleName, resString string, ops ...string) bool {
 	}
 	return true
 }
-

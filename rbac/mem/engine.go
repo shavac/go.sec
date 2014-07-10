@@ -34,10 +34,6 @@ func (e *engine) SaveRole(roleName string, roleType int, desc string) bool {
 	return false
 }
 
-func (e *engine) HasRole(roleName, HasRoleName string) bool {
-	return false
-}
-
 func (e *engine) HasAllRole(roleName string, HasRoleNames ...string) bool {
 	return false
 }
@@ -46,11 +42,19 @@ func (e *engine) HasAnyRole(roleName string, HasRoleNames ...string) bool {
 	return false
 }
 
-func (e *engine) GrantRole(grantee, granted string) error {
+func (e *engine) GrantRole(grantee string, granted ...string) error {
 	return nil
 }
 
-func (e *engine) GrantPerm(roleName, op, res string) error {
+func (e *engine) RevokeRole(revokee string, revoked ...string) error {
+	return nil
+}
+
+func (e *engine) GrantPerm(roleName, res string, op ...string) error {
+	return nil
+}
+
+func (e *engine) RevokePerm(roleName, res string, op ...string) error {
 	return nil
 }
 
@@ -62,6 +66,19 @@ func (e *engine) GetPermsByRole(roleName string) ([]string, []string) {
 	return nil, nil
 }
 
-func (e *engine) RBACDecision(roleName, res string, ops ...string) bool {
+func (e *engine) HasAllPerm(roleName, res string, ops ...string) bool {
 	return false
+}
+
+func (e *engine) ResAlias(alias, resString string) bool {
+	return true
+}
+
+/*
+func (e *engine) ResGet(alias string) (string, bool) {
+	return alias, false
+}
+*/
+
+func (e *engine) Gc() {
 }

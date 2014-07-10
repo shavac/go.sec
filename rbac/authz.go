@@ -5,7 +5,8 @@ const (
 	USER = iota
 	ROLE
 	PERM
-	PERMEX
+	PERMSET
+	PERMX
 )
 
 type authz interface {

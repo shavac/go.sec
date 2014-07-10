@@ -8,3 +8,7 @@ func init() {
 	ResParser.Append(ParseURLRes)
 }
 
+func NewRes(name, resString string) (Res, error) {
+	engine.ResAlias(name, resString)
+	return ParseRes(name, resString)
+}

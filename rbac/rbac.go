@@ -15,7 +15,7 @@ func Init(conn string) error {
 }
 
 func HasRole(roleName string, hasRoleName string) bool {
-	return engine.HasRole(roleName, hasRoleName)
+	return engine.HasAllRole(roleName, hasRoleName)
 }
 
 func HasAllRole(roleName string, hasRoleNames ...string) bool {
@@ -38,35 +38,40 @@ func GetOpsByRes(res string) []string {
 	return engine.GetOpsByRes(res)
 }
 
-func GetPermsByRole(roleName string) []Perm {
-	perms := []Perm{}
+func GetPermSetByRole(roleName string) []Perm {
+	perms := PermSet{}
 	ops, res := engine.GetPermsByRole(roleName)
 	if len(ops) != len(res) {
 		return nil
 	}
 	for i, op := range ops {
 		if ps, err := NewPerm(res[i], op); err == nil {
-			perms=append(perms, ps...)
+			perms = append(perms, *ps)
 		}
 	}
 	return perms
 }
 
-func GrantRole(grantee, granted string) error {
-	return engine.GrantRole(grantee, granted)
+func GrantRole(grantee string, granted ...string) error {
+	return engine.GrantRole(grantee, granted...)
 }
 
-func GrantPerm(roleName, op, res string) error {
-	return engine.GrantPerm(roleName, op, res)
+func RevokeRole(revokee string, revoked ...string) error {
+	return engine.RevokeRole(revokee, revoked...)
 }
 
+func GrantPerm(roleName string, res string, ops ...string) error {
+	return engine.GrantPerm(roleName, res, ops...)
+}
 
+func RevokePerm(roleName, res string, ops ...string) error {
+	return engine.RevokePerm(roleName, res, ops...)
+}
 
+func GrantSysPerm(roleName string, ops ...string) error {
+	return engine.GrantPerm(roleName, "", ops...)
+}
 
-
-
-
-
-
-
-
+func RevokeSysPerm(roleName string, ops ...string) error {
+	return engine.RevokePerm(roleName, "", ops...)
+}
