@@ -2,10 +2,12 @@ package main
 
 import (
 	"github.com/shavac/go.sec/rbac"
+	"github.com/shavac/go.sec/rbac/mem"
 	"log"
 )
 
 func main() {
+	rbac.SetEngine(mem.Engine)
 	if err := rbac.Init("DEFAULT"); err != nil {
 		log.Fatal(err.Error())
 	}
@@ -46,10 +48,3 @@ func main() {
 		log.Fatal("hr_clerk should not have update employee permission")
 	}
 }
-
-
-
-
-
-
-

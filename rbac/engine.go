@@ -2,8 +2,8 @@ package rbac
 
 type Engine interface {
 	Init(conn string) error
-	IncVersion()
-	GetVersion() int64
+	IncVersion() int
+	GetVersion() int
 	GetRole(string) (bool, int, string)
 	SaveRole(string, int, string) bool
 	GetOpsByRes(res string) []string
@@ -18,13 +18,3 @@ type Engine interface {
 	ResAlias(alias, resString string) bool
 	Gc()
 }
-
-
-
-
-
-
-
-
-
-

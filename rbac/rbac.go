@@ -10,6 +10,10 @@ var (
 	curVersion int64  = engine.GetVersion()
 )
 
+func SetEngine(eng Engine) {
+	engine = eng
+}
+
 func Init(conn string) error {
 	return engine.Init(conn)
 }
