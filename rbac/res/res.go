@@ -1,7 +1,7 @@
 package res
 
 import (
-	"github.com/shavac/go.sec/rbac/errs"
+	"github.com/shavac/go.sec/rbac/err"
 )
 
 type Res interface {
@@ -38,7 +38,7 @@ func (rp *resParser) Parse(name, resString string) (Res, error) {
 	if resString=="" {
 		return nil, nil
 	}
-	return nil, errs.ErrParseRes
+	return nil, err.ErrParseRes
 }
 
 func ParseRes(name, resString string) (Res, error) {

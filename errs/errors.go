@@ -12,3 +12,10 @@ var (
 	ErrEngine = errors.New("Engine does not return correct data")
 	ErrNotGrantable = errors.New("User is not grantable")
 )
+
+
+
+
+
+
+

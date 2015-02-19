@@ -1,13 +1,12 @@
 package rbac
 
 import (
-	//"github.com/shavac/go.sec/rbac/errs"
 	"github.com/shavac/go.sec/rbac/mem"
 )
 
 var (
 	engine     Engine = mem.Engine
-	curVersion int64  = engine.GetVersion()
+	curSerial int64  = engine.GetSerial()
 )
 
 func SetEngine(eng Engine) {
@@ -30,19 +29,19 @@ func HasAnyRole(roleName string, hasRoleNames ...string) bool {
 	return engine.HasAnyRole(roleName, hasRoleNames...)
 }
 
-func incVersion() {
-	engine.IncVersion()
+func incSerial() {
+	engine.IncSerial()
 }
 
-func getVersion() int64 {
-	return engine.GetVersion()
+func getSerial() int64 {
+	return engine.GetSerial()
 }
 
 func GetOpsByRes(res string) []string {
 	return engine.GetOpsByRes(res)
 }
 
-func GetPermSetByRole(roleName string) []Perm {
+func GetPermSetByRole(roleName string) PermSet {
 	perms := PermSet{}
 	ops, res := engine.GetPermsByRole(roleName)
 	if len(ops) != len(res) {
