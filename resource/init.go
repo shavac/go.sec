@@ -3,5 +3,5 @@ package resource
 var parsers = &resParser{}
 
 func init() {
-	RegisterParseFunc(ParseNameRes, ParseURLRes)
+	RegisterParseFunc(ParseGlobalRes, ParseNameRes, ParseURLRes)
 }

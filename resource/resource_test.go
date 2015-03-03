@@ -13,11 +13,15 @@ func TestParseRes(t *testing.T) {
 	n1, _ := Parse("1", "n1")
 	n2, _ := Parse("2", "n2")
 	n1a, _ := Parse("3", "n1")
+	g, _ := Parse("","")
 	if  _, ok := u1.(*URLRes); ! ok {
 		t.Fatal("n1 should has type *URLRes")
 	}
 	if  _, ok := n1.(*NameRes); ! ok {
 		t.Fatal("n1 should has type *NameRes")
+	}
+	if _, ok := g.(*GlobalRes); ! ok {
+		t.Fatal("g should has type *GlobalRes")
 	}
 	if u1.Equals(u2) {
 		t.Fatal("u1 should not equal u2")
@@ -39,5 +43,11 @@ func TestParseRes(t *testing.T) {
 	}
 	if !n1.Contains(n1a) {
 		t.Fatal("n1 should contain n1a")
+	}
+	if g.Equals(g) {
+		t.Fatal("global should equal global")
+	}
+	if !g.Contains(n1a) {
+		t.Fatal("g should contain n1a")
 	}
 }

@@ -1,80 +1,56 @@
 package rbac
 
 import (
-	"github.com/shavac/go.sec/rbac/mem"
+	"github.com/shavac/go.sec/rbac/engine"
+	"github.com/shavac/go.sec/rbac/engine/mem"
 )
 
 var (
-	engine     Engine = mem.Engine
-	curSerial int64  = engine.GetSerial()
+	egn           engine.RBACProvider = mem.Init()
+	currentSerial                     = egn.CurrentSerial()
 )
 
-func SetEngine(eng Engine) {
-	engine = eng
-}
-
-func Init(conn string) error {
-	return engine.Init(conn)
-}
-
 func HasRole(roleName string, hasRoleName string) bool {
-	return engine.HasAllRole(roleName, hasRoleName)
+	return egn.HasAllRole(roleName, hasRoleName)
 }
 
 func HasAllRole(roleName string, hasRoleNames ...string) bool {
-	return engine.HasAllRole(roleName, hasRoleNames...)
+	return egn.HasAllRole(roleName, hasRoleNames...)
 }
 
 func HasAnyRole(roleName string, hasRoleNames ...string) bool {
-	return engine.HasAnyRole(roleName, hasRoleNames...)
+	return egn.HasAnyRole(roleName, hasRoleNames...)
 }
 
-func incSerial() {
-	engine.IncSerial()
+/*func GetPermsByRole(roleName string) []string {
+	return engine.GetPermsByRole(roleName)
 }
-
-func getSerial() int64 {
-	return engine.GetSerial()
-}
-
-func GetOpsByRes(res string) []string {
-	return engine.GetOpsByRes(res)
-}
-
-func GetPermSetByRole(roleName string) PermSet {
-	perms := PermSet{}
-	ops, res := engine.GetPermsByRole(roleName)
-	if len(ops) != len(res) {
-		return nil
-	}
-	for i, op := range ops {
-		if ps, err := NewPerm(res[i], op); err == nil {
-			perms = append(perms, *ps)
-		}
-	}
-	return perms
-}
+*/
 
 func GrantRole(grantee string, granted ...string) error {
-	return engine.GrantRole(grantee, granted...)
+	return egn.GrantRole(grantee, granted...)
 }
 
 func RevokeRole(revokee string, revoked ...string) error {
-	return engine.RevokeRole(revokee, revoked...)
+	return egn.RevokeRole(revokee, revoked...)
 }
 
-func GrantPerm(roleName string, res string, ops ...string) error {
-	return engine.GrantPerm(roleName, res, ops...)
+func GrantPerm(roleName string, res string, perm ...string) error {
+	return egn.GrantPerm(roleName, res, perm...)
 }
 
-func RevokePerm(roleName, res string, ops ...string) error {
-	return engine.RevokePerm(roleName, res, ops...)
+func RevokePerm(roleName, res string, perm ...string) error {
+	return egn.RevokePerm(roleName, res, perm...)
 }
 
-func GrantSysPerm(roleName string, ops ...string) error {
-	return engine.GrantPerm(roleName, "", ops...)
+func GrantSysPerm(roleName string, perm ...string) error {
+	return egn.GrantPerm(roleName, "", perm...)
 }
 
-func RevokeSysPerm(roleName string, ops ...string) error {
-	return engine.RevokePerm(roleName, "", ops...)
+func RevokeSysPerm(roleName string, perm ...string) error {
+	return egn.RevokePerm(roleName, "", perm...)
+}
+
+func RBACDecision(roleName string, res string, perm ...string) bool {
+	return egn.RBACDecision(roleName, res, perm...)
 }

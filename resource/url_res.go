@@ -11,7 +11,7 @@ type URLRes struct {
 }
 
 func ParseURLRes(rawurl, name string) (Resource, error) {
-	resurl, err := url.Parse(rawurl)
+	resurl, err := url.Parse(strings.TrimSpace(rawurl))
 	if err != nil {
 		return nil, err
 	}
@@ -39,19 +39,16 @@ func (ur *URLRes) Equals(resource Resource) bool {
 func (ur *URLRes) Contains(resl ...Resource) bool {
 	for _, resource := range resl {
 		if r, ok := resource.(*URLRes); ok {
-			switch {
-			case len(r.String()) < len(ur.String()):
-				return false
-			case !strings.HasPrefix(r.String(), ur.String()):
-				return false
-			case len(r.String()) == len(ur.String()):
-				continue
-			case strings.HasPrefix(r.String()[len(ur.String())-1:], "/"):
-				continue
-			default:
+			urs:=strings.TrimRight(ur.String(),"/")
+			rs:=strings.TrimRight(r.String(),"/")
+			if!strings.HasPrefix(rs, urs) {
 				return false
 			}
 		}
 	}
 	return true
 }
+
+
+
+
