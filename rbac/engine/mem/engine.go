@@ -3,9 +3,9 @@ package mem
 import (
 	"github.com/shavac/go.sec/errs"
 	. "github.com/shavac/go.sec/rbac/engine"
+	"github.com/shavac/go.sec/resource"
 	"sort"
 	"sync"
-	"github.com/shavac/go.sec/resource"
 )
 
 type storlet struct {
@@ -51,72 +51,57 @@ func (e *engine) nextSerial() int {
 	return e.serial
 }
 
-func (e *engine) RoleExists(roleName string) bool {
+func (e *engine) GetRole(roleName string, create bool) (int, int, bool) {
 	if id, ok := e.roleMap[roleName]; ok {
-		if r, ok := e.storage[id]; ok && r.sType == ROLE {
-			return true
-		}
-	}
-	return false
-}
-
-func (e *engine) GetRole(roleName string, create bool) (bool, int) {
-	if id, ok := e.roleMap[roleName]; ok {
-		return true, id
+		return id, e.storage[id].sType, true
 	} else if !create {
-		return false, -1
+		return -1, -1, false
 	} else {
 		e.Lock()
 		defer e.Unlock()
 		nid := e.nextSerial()
 		e.roleMap[roleName] = nid
 		e.storage[nid] = &storlet{ROLE, roleName, ""}
-		return false, nid
+		return nid, ROLE, false
 	}
 }
 
-func (e *engine) SaveRole(roleName, desc string) error {
+func (e *engine) SetRoleType(roleName string, rbacType int) error {
 	if id, ok := e.roleMap[roleName]; ok {
-		if r, ok := e.storage[id]; ok && r.sType == ROLE {
-			e.Lock()
-			defer e.Unlock()
-			sLet := e.storage[id]
-			sLet.sContent = desc
-			return nil
-		} else {
-			return errs.ErrDupRole
-		}
-	} else {
 		e.Lock()
 		defer e.Unlock()
-		rid := e.nextSerial()
-		e.roleMap[roleName] = e.nextSerial()
-		e.storage[rid] = &storlet{ROLE, roleName, desc}
+		e.storage[id].sType = rbacType
 		return nil
+	} else {
+		return errs.ErrRoleNotExist
 	}
 }
 
 func (e *engine) DropRole(roleName string) error {
 	e.Lock()
 	defer e.Unlock()
-	exist, rid := e.GetRole(roleName, false)
-	if ! exist {
+	rid, _, exist := e.GetRole(roleName, false)
+	if !exist {
 		return errs.ErrRoleNotExist
 	}
+	delete(e.roleMap, roleName)
 	delete(e.roleGraph, rid)
 	delete(e.storage, rid)
 	for k, v := range e.roleGraph {
-		if idx:= v.Search(rid) ; idx < v.Len() && v[idx]==rid {
-			e.roleGraph[k]=append(v[:idx], v[idx+1:]...)
+		if idx := v.Search(rid); idx < v.Len() && v[idx] == rid {
+			e.roleGraph[k] = append(v[:idx], v[idx+1:]...)
 		}
 	}
 	return nil
 }
 
 func (e *engine) GrantRole(grantee string, grants ...string) error {
-	_, gid := e.GetRole(grantee, true)
+	gid, _, _ := e.GetRole(grantee, true)
 	for _, roleName := range grants {
-		_, rid := e.GetRole(roleName, true)
+		rid, rType, _ := e.GetRole(roleName, true)
+		if rType != ROLE {
+			return errs.ErrUserNotGrantable
+		}
 		e.roleGraph[gid] = append(e.roleGraph[gid], rid)
 		e.roleGraph[gid].Sort()
 	}
@@ -124,29 +109,29 @@ func (e *engine) GrantRole(grantee string, grants ...string) error {
 }
 
 func (e *engine) RevokeRole(revokee string, revoked ...string) error {
-	exist, eid := e.GetRole(revokee, true)
-	if ! exist {
+	eid, _, exist := e.GetRole(revokee, true)
+	if !exist {
 		return errs.ErrRoleNotExist
 	}
-	grantedRoleId:= e.roleGraph[eid]
+	grantedRoleId := e.roleGraph[eid]
 	for _, roleName := range revoked {
-		if exist,rid := e.GetRole(roleName, false) ; ! exist {
+		if rid, _, exist := e.GetRole(roleName, false); !exist {
 			return errs.ErrRoleNotExist
 		} else {
-			if idx:=grantedRoleId.Search(rid); idx < grantedRoleId.Len() && grantedRoleId[idx]==rid {
-				grantedRoleId=append(grantedRoleId[:idx], grantedRoleId[idx+1:]...)
+			if idx := grantedRoleId.Search(rid); idx < grantedRoleId.Len() && grantedRoleId[idx] == rid {
+				grantedRoleId = append(grantedRoleId[:idx], grantedRoleId[idx+1:]...)
 			}
 		}
 	}
-	e.roleGraph[eid]=grantedRoleId
+	e.roleGraph[eid] = grantedRoleId
 	return nil
 }
 
-func (e *engine) GetPerm(permName, resString string, create bool) (exist bool, id int) {
+func (e *engine) GetPerm(permName, resString string, create bool) (id int, exist bool) {
 	if id, ok := e.permMap[permName][resString]; ok {
-		return true, id
+		return id, true
 	} else if !create {
-		return false, -1
+		return -1, false
 	} else {
 		e.Lock()
 		defer e.Unlock()
@@ -156,12 +141,12 @@ func (e *engine) GetPerm(permName, resString string, create bool) (exist bool, i
 		}
 		e.permMap[permName][resString] = id
 		e.storage[id] = &storlet{PERM, permName, resString}
-		return false, id
+		return id, false
 	}
 }
 
 func (e *engine) DropPerm(permName, resString string) error {
-	if _, ok := e.permMap[permName]; ! ok {
+	if _, ok := e.permMap[permName]; !ok {
 		return errs.ErrPermNotExist
 	} else if id, ok := e.permMap[permName][resString]; !ok {
 		return errs.ErrPermNotExist
@@ -172,24 +157,24 @@ func (e *engine) DropPerm(permName, resString string) error {
 		delete(e.storage, id)
 		for rid, permIds := range e.rolePerm {
 		D:
-			if i:= permIds.Search(id); i < len(permIds) && permIds[i] == id { //found
+			if i := permIds.Search(id); i < len(permIds) && permIds[i] == id { //found
 				permIds = append(permIds[:i], permIds[i+1:]...)
 				goto D
 			}
-			e.rolePerm[rid]=permIds
+			e.rolePerm[rid] = permIds
 		}
 	}
 	return nil
 }
 
 func (e *engine) GrantPerm(roleName, resString string, perms ...string) error {
-	exist, rid := e.GetRole(roleName, true)
+	rid, _, exist := e.GetRole(roleName, true)
 	for _, perm := range perms {
-		_, pid := e.GetPerm(perm, resString, true)
+		pid, _ := e.GetPerm(perm, resString, true)
 		permIds := e.rolePerm[rid]
-		if idx := permIds.Search(pid); idx >= permIds.Len() || permIds[idx]!=pid {
-		e.rolePerm[rid] = append(e.rolePerm[rid], pid)
-		e.rolePerm[rid].Sort()
+		if idx := permIds.Search(pid); idx >= permIds.Len() || permIds[idx] != pid {
+			e.rolePerm[rid] = append(e.rolePerm[rid], pid)
+			e.rolePerm[rid].Sort()
 		}
 	}
 	if !exist {
@@ -199,27 +184,27 @@ func (e *engine) GrantPerm(roleName, resString string, perms ...string) error {
 }
 
 func (e *engine) RevokePerm(roleName string, res string, perms ...string) error {
-	exist, rid := e.GetRole(roleName, false)
-	if ! exist {
+	rid, _, exist := e.GetRole(roleName, false)
+	if !exist {
 		return errs.ErrRoleNotExist
 	}
-	permIds:=e.rolePerm[rid]
-	for _, permName := range perms{
-		if exist, pid := e.GetPerm(permName, res, false); exist {
+	permIds := e.rolePerm[rid]
+	for _, permName := range perms {
+		if pid, exist := e.GetPerm(permName, res, false); exist {
 		RP:
-			if i:= permIds.Search(pid); i < len(permIds) && permIds[i] == pid { //found
+			if i := permIds.Search(pid); i < len(permIds) && permIds[i] == pid { //found
 				permIds = append(permIds[:i], permIds[i+1:]...)
 				goto RP
 			}
 		}
 	}
-	e.rolePerm[rid]=permIds
+	e.rolePerm[rid] = permIds
 	return nil
 }
 
 func (e *engine) SetDesc(id int, desc string) bool {
 	if _, ok := e.storage[id]; ok {
-		e.desc[id]=desc
+		e.desc[id] = desc
 		return true
 	}
 	return false
@@ -230,12 +215,12 @@ func (e *engine) GetDesc(id int) string {
 }
 
 func (e *engine) HasAllRole(roleName string, hasRoleNames ...string) bool {
-	exist, rootId := e.GetRole(roleName, false)
+	rootId, _, exist := e.GetRole(roleName, false)
 	if !exist {
 		return false
 	}
 	for _, r := range hasRoleNames {
-		exist, id := e.GetRole(r, false)
+		id, _, exist := e.GetRole(r, false)
 		if !exist {
 			return false
 		}
@@ -251,12 +236,12 @@ func (e *engine) HasAllRole(roleName string, hasRoleNames ...string) bool {
 }
 
 func (e *engine) HasAnyRole(roleName string, hasRoleNames ...string) bool {
-	exist, rootId := e.GetRole(roleName, false)
+	rootId, _, exist := e.GetRole(roleName, false)
 	if !exist {
 		return false
 	}
 	for _, r := range hasRoleNames {
-		exist, id := e.GetRole(r, false)
+		id, _, exist := e.GetRole(r, false)
 		if !exist {
 			continue
 		}
@@ -278,13 +263,13 @@ func (e *engine) searchRoleGraph(rootId int, f func(id int) bool) bool {
 	return found
 }
 
-func (e *engine) RBACDecision(roleName string, res string, perms ...string) bool {
-	exist, rootId := e.GetRole(roleName, false)
+func (e *engine) Decision(roleName string, res string, perms ...string) bool {
+	rootId, _, exist := e.GetRole(roleName, false)
 	if !exist {
 		return false
 	}
 	for _, p := range perms {
-		exist, pid := e.GetPerm(p, res, false)
+		pid, exist := e.GetPerm(p, res, false)
 		if !exist {
 			return false
 		}
@@ -304,8 +289,8 @@ func (e *engine) RBACDecision(roleName string, res string, perms ...string) bool
 	return true
 }
 
-func (e *engine) RBAC2Decision(roleName string, res string, perms ...string) bool {
-	exist, rootId := e.GetRole(roleName, false)
+func (e *engine) DecisionEx(roleName string, res string, perms ...string) bool {
+	rootId, _, exist := e.GetRole(roleName, false)
 	if !exist {
 		return false
 	}
@@ -333,12 +318,3 @@ func (e *engine) RBAC2Decision(roleName string, res string, perms ...string) boo
 	}
 	return true
 }
-
-
-
-
-
-
-
-
-

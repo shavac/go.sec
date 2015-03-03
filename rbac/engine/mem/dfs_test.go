@@ -7,7 +7,7 @@ func TestRecursive(t *testing.T) {
 	e.GrantRole("ceo", "hr_mgr")
 	e.GrantRole("hr_mgr", "hr_stf")
 	e.GrantRole("hr_mgr", "ceo")
-	_, id := e.GetRole("ceo", false)
+	id, _, _ := e.GetRole("ceo", false)
 	f := func(cid int) bool {
 		return false
 	}
@@ -19,7 +19,7 @@ func TestRecursive2(t *testing.T) {
 	e.GrantRole("hr_mgr", "hr_stf")
 	e.GrantPerm("hr_mgr", "update", "delete")
 	e.GrantPerm("hr_stf", "select", "insert")
-	_, id := e.GetRole("hr_mgr", false)
+	id, _, _ := e.GetRole("hr_mgr", false)
 	f := func(cid int) bool {
 		return false
 	}

@@ -1,7 +1,7 @@
 package engine
 
 const (
-	ROLE = iota
+	USER = iota
+	ROLE
 	PERM
-	RES
 )
