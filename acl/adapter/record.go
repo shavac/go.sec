@@ -1,9 +1,13 @@
 package adapter
 
-type EntryRecord struct {
-	Type      string
-	SecureId  int
+type RecordKey struct {
+	SecureId int
 	Operation string
+}
+
+type EntryRecord struct {
+	RecordKey
+	Type      string
 	Target    string
 	Permit    bool
 	Ctx       string

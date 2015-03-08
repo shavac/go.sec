@@ -1,22 +1,41 @@
 package acl
 
-import "github.com/shavac/go.sec/acl/adapter"
+import (
+	"github.com/shavac/go.sec/acl/adapter"
+	"fmt"
+)
 
 type Entry interface {
-	SecureId() int
-	Match(secureId int, operation string, target string) bool
-	Decide(dString string) bool
+	Key() adapter.RecordKey
+	Match(target string, d interface{}) (bool, error)
+	Decide() bool
 	Record() adapter.EntryRecord
 }
 
-type EntryConstructFunc func(secureId int, operation, target string, permit bool, ctx string, runOnce bool) Entry
+type EntryConstructFunc func(secureId int, operation, target string, permit bool, ctx string, runOnce bool) (Entry, error)
 
 var EntryRegistry = make(map[string]EntryConstructFunc)
 
-func EntryFactory(eType string, secureId int, operation, target string, permit bool, ctx string, runOnce bool) Entry {
+func EntryFactory(eType string, secureId int, operation, target string, permit bool, ctx string, runOnce bool) (Entry, error) {
 	if f, ok := EntryRegistry[eType]; !ok {
-		return nil
+		return nil, fmt.Errorf("Entry type %s have not registered", eType)
 	} else {
 		return f(secureId, operation, target, permit, ctx, runOnce)
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

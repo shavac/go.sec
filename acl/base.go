@@ -2,26 +2,32 @@ package acl
 
 import "github.com/shavac/go.sec/acl/adapter"
 
+const (
+	base = "BASE"
+)
+
 func init() {
-	EntryRegistry["BASE"] = NewBaseEntry
+	EntryRegistry[base] = NewBaseEntry
 }
 
 type BaseEntry struct {
 	adapter.EntryRecord
 }
 
-func NewBaseEntry(secureId int, operation, target string, permit bool, ctx string, runOnce bool) Entry {
+func NewBaseEntry(secureId int, operation, target string, permit bool, ctx string, runOnce bool) (Entry, error) {
 	return &BaseEntry{
 		adapter.EntryRecord{
-			Type:      "BASE",
-			SecureId:  secureId,
-			Operation: operation,
+			RecordKey: adapter.RecordKey {
+				SecureId:  secureId,
+				Operation: operation,
+			},
+			Type:      base,
 			Target:    target,
 			Permit:    permit,
 			Ctx:       ctx,
 			RunOnce:   runOnce,
 		},
-	}
+	}, nil
 }
 
 func (e *BaseEntry) SecureId() int {
@@ -29,14 +35,14 @@ func (e *BaseEntry) SecureId() int {
 }
 
 func (e *BaseEntry) Type() string {
-	return "BASE"
+	return base
 }
 
-func (e *BaseEntry) Match(secureId int, operation string, target string) bool {
-	return secureId == e.EntryRecord.SecureId && operation == e.EntryRecord.Operation && target == e.EntryRecord.Target
+func (e *BaseEntry) Match(target string, d interface{}) (bool, error) {
+	return target == e.EntryRecord.Target, nil
 }
 
-func (e *BaseEntry) Decide(s string) bool {
+func (e *BaseEntry) Decide() bool {
 	return e.EntryRecord.Permit
 }
 
@@ -44,8 +50,17 @@ func (e *BaseEntry) RunOnce() bool {
 	return e.EntryRecord.RunOnce
 }
 
+func (e *BaseEntry) Key() adapter.RecordKey {
+	return e.RecordKey
+}
+
 func (e *BaseEntry) Record() adapter.EntryRecord {
 	return e.EntryRecord
 }
+
+
+
+
+
 
 
