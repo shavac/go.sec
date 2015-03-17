@@ -13,3 +13,8 @@ type EntryRecord struct {
 	Ctx       string
 	RunOnce   bool
 }
+
+type OrderedRecord struct {
+	Order  int
+	Record EntryRecord
+}

@@ -5,6 +5,12 @@ import (
 	"fmt"
 )
 
+const (
+	PERMIT = iota
+	DENY
+	UNDETERMINED
+)
+
 type Entry interface {
 	Key() adapter.RecordKey
 	Match(target string, d interface{}) (bool, error)

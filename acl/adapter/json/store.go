@@ -2,24 +2,36 @@ package json
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/shavac/go.sec/acl/adapter"
 	"os"
 	"sort"
+	"io/ioutil"
 )
 
-type OrderedEntry struct {
-	Order  int
-	Record adapter.EntryRecord
-}
-
 type store struct {
-	fileName string
-	Policy   bool
-	Entries  []OrderedEntry
+	file    *os.File
+	Entries []adapter.OrderedRecord
 }
 
-func Init(fname string) adapter.ACLAdapter {
-	return &store{fileName: fname}
+func init() {
+	adapter.Register(new(os.File), Init)
+}
+
+func Init(conn interface{}, aclName string) (adapter.ACLAdapter, error) {
+	if f, ok := conn.(*os.File); !ok {
+		return nil, fmt.Errorf("wrong argument type, need *os.File, got %T\n", conn)
+	} else {
+		return &store{file: f}, nil
+	}
+}
+
+func InitWithFileName(fname string) (adapter.ACLAdapter, error) {
+	if f, err := os.OpenFile(fname, os.O_CREATE|os.O_RDWR, 0644); err != nil {
+		return nil, err
+	} else {
+		return Init(f, "")
+	}
 }
 
 func (s *store) Len() int {
@@ -33,58 +45,41 @@ func (s *store) Less(i, j int) bool {
 func (s *store) Swap(i, j int) { s.Entries[i], s.Entries[j] = s.Entries[j], s.Entries[i] }
 
 func (s *store) SaveEntry(order int, er adapter.EntryRecord) error {
-	s.Entries = append(s.Entries, OrderedEntry{order, er})
+	s.Entries = append(s.Entries, adapter.OrderedRecord{order, er})
 	sort.Sort(s)
 	return s.SaveToFile()
 }
 
 func (s *store) SaveToFile() error {
-	b, err := json.MarshalIndent(s, "", "\t")
-	if err != nil {
+	if b, err := json.MarshalIndent(s, "", "\t") ;err != nil {
+		return err
+	} else {
+		s.Clear()
+		_, err := s.file.Write(b)
 		return err
 	}
-	jsonFile, err :=os.Create(s.fileName)
-	defer jsonFile.Close()
-	if err != nil {
-		return err
-	}
-	jsonFile.Truncate(0)
-	jsonFile.Write(b)
-	return nil
 }
 
-func (s *store) GetPolicy() bool {
-	return s.Policy
-}
-
-func (s *store) SetPolicy(p bool) error {
-	s.Policy=p
-	return s.SaveToFile()
+func (s *store) Clear() error {
+	s.Entries=s.Entries[:0]
+	err := s.file.Truncate(0)
+	return err
 }
 
 func (s *store) LoadFromFile() error {
-	jsonFile, err:= os.Open(s.fileName)
-	defer jsonFile.Close()
+	s.file.Seek(0, 0)
+	b, err:= ioutil.ReadAll(s.file)
 	if err != nil {
-		return err
-	}
-	fst, err := jsonFile.Stat()
-	if err != nil {
-		return err
-	}
-	b := make([]byte, fst.Size())
-	if _, err := jsonFile.Read(b); err != nil {
 		return err
 	}
 	if err := json.Unmarshal(b, s); err != nil {
-		println(err.Error())
 		return err
 	}
 	return nil
 }
 
 func (s *store) AllRecord() (<-chan adapter.EntryRecord, error) {
-	if err:= s.LoadFromFile(); err != nil {
+	if err := s.LoadFromFile(); err != nil {
 		return nil, err
 	}
 	out := make(chan adapter.EntryRecord)
@@ -96,6 +91,3 @@ func (s *store) AllRecord() (<-chan adapter.EntryRecord, error) {
 	}()
 	return out, nil
 }
-
-
-

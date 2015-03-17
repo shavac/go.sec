@@ -5,14 +5,15 @@ import (
 	"github.com/shavac/go.sec/acl/adapter"
 )
 
+
+
 type ACL struct {
-	policy          bool
 	entryCollection map[adapter.RecordKey][]Entry
 	sync.RWMutex
 }
 
-func NewACL(policy bool) *ACL {
-	return &ACL{policy: policy, entryCollection: make(map[adapter.RecordKey][]Entry)}
+func NewACL() *ACL {
+	return &ACL{entryCollection: make(map[adapter.RecordKey][]Entry)}
 }
 
 func (acl *ACL) InsEntry(e Entry) {
@@ -35,7 +36,6 @@ func (acl *ACL) Insert(eType string, secureId int, operation, target string, per
 	acl.InsEntry(e)
 	return nil
 }
-//		acl.entryCollection[adapter.RecordKey{er.SecureId, er.Operation}] = append(acl.entryCollection[adapter.RecordKey{er.SecureId, er.Operation}], e)
 
 func (acl *ACL) Append(eType string, secureId int, operation, target string, permit bool, ctx string, runOnce bool) error {
 	e, err := EntryFactory(eType, secureId, operation, target, permit, ctx, runOnce)
@@ -46,20 +46,33 @@ func (acl *ACL) Append(eType string, secureId int, operation, target string, per
 	return nil
 }
 
-func (acl *ACL) Decide(secureId int, operation string, target string, d interface{}) bool {
+func (acl *ACL) Decide(secureId int, operation string, target string, d interface{}) int {
 	acl.RLock()
 	defer acl.RUnlock()
-	for _, e := range acl.entryCollection[adapter.RecordKey{secureId, operation}] {
+	rk := adapter.RecordKey{secureId, operation}
+	for i, e := range acl.entryCollection[rk] {
 		if ok, _ := e.Match(target, d); ok {
-			return e.Decide()
+			if e.Record().RunOnce {
+				defer func() {
+					acl.entryCollection[rk]=append(acl.entryCollection[rk][:i], acl.entryCollection[rk][i+1:]...)
+				}()
+			}
+			if e.Decide() {
+				return PERMIT
+			} else {
+				return DENY
+			}
 		}
 	}
-	return acl.policy
+	return UNDETERMINED
 }
 
 func (acl *ACL) SaveTo(adpt adapter.ACLAdapter) error {
 	acl.Lock()
 	defer acl.Unlock()
+	if err :=adpt.Clear(); err != nil {
+		return err
+	}
 	for _, v := range acl.entryCollection {
 		for i, e := range v {
 			if err := adpt.SaveEntry(i, e.Record()); err != nil {
@@ -67,7 +80,6 @@ func (acl *ACL) SaveTo(adpt adapter.ACLAdapter) error {
 			}
 		}
 	}
-	adpt.SetPolicy(acl.policy)
 	return nil
 }
 
@@ -82,6 +94,5 @@ func (acl *ACL) LoadFrom(adpt adapter.ACLAdapter) error {
 			return err
 		}
 	}
-	acl.policy = adpt.GetPolicy()
 	return nil
 }
