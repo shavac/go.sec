@@ -3,6 +3,7 @@ package mongo
 import (
 	"fmt"
 	"github.com/shavac/go.sec/errs"
+	"github.com/shavac/go.sec/resource"
 	. "github.com/shavac/go.sec/rbac/engine"
 	"gopkg.in/mgo.v2"
 	. "gopkg.in/mgo.v2/bson"
@@ -163,11 +164,9 @@ func (e *mongoEngine) DropRole(roleName string) error {
 }
 
 func (e *mongoEngine) GrantRole(grantee string, grants ...string) error {
-	e.GetRole(grantee, true)
-	q, _ := e.findRoleByName(grantee)
-	chg := mgo.Change{}
-	chg.Update = M{"$addToSet": M{"grantedroles": M{"$each": grants}}}
-	if _, err := q.Apply(chg, &RoleCol.row); err != nil {
+	chg:= M{"$addToSet": M{"grantedroles": M{"$each": grants}}}
+	if cInfo, err := e.C(RoleCol.name).UpsertId(grantee, chg); err != nil {
+		println(cInfo.Updated)
 		return err
 	}
 	for _, g := range grants {
@@ -192,8 +191,6 @@ func (e *mongoEngine) RevokeRole(revokee string, revoked ...string) error {
 }
 
 func (e *mongoEngine) GetPerm(permName, resString string, create bool) (id int, exist bool) {
-	nc, _ := e.C(PermCol.name).Count()
-	println("founding:", PermCol.name, permName, resString, nc)
 	q := e.C(PermCol.name).Find(M{"_id.permname": permName, "_id.resource.string": resString})
 	if n, _ := q.Count(); n == 1 {
 		q.One(&PermCol.row)
@@ -225,12 +222,9 @@ func (e *mongoEngine) DropPerm(permName, resString string) error {
 }
 
 func (e *mongoEngine) GrantPerm(roleName, resString string, perms ...string) error {
-	e.GetRole(roleName, true)
-	ids := e.getPermIds(resString, perms)
-	q, _ := e.findRoleByName(roleName)
-	chg := mgo.Change{}
-	chg.Update = M{"$addToSet": M{"grantedpermids": M{"$each": ids}}}
-	if _, err := q.Apply(chg, &RoleCol.row); err != nil {
+	ids, _ := e.getPermIds(resString, perms, true)
+	chg := M{"$addToSet": M{"grantedpermids": M{"$each": ids}}}
+	if _, err := e.C(RoleCol.name).UpsertId(roleName, chg); err != nil {
 		return err
 	}
 	e.IncScn()
@@ -241,7 +235,7 @@ func (e *mongoEngine) RevokePerm(roleName string, resString string, perms ...str
 	if _, _, exist := e.GetRole(roleName, false); !exist {
 		return errs.ErrRoleNotExist
 	}
-	ids := e.getPermIds(resString, perms)
+	ids, _ := e.getPermIds(resString, perms, false)
 	if err := e.C(RoleCol.name).Update(
 		M{"_id": roleName},
 		M{"$pullAll": M{"grantedpermids": ids}},
@@ -269,7 +263,6 @@ func (e *mongoEngine) buildRoleCache(roleName string) error {
 	if RoleCol.row.IndirectGrants.ChgNum == e.currentScn() {
 		return nil
 	}
-	println("rebuilding cache", roleName)
 	var indRoles sort.StringSlice
 	var indPermIds sort.IntSlice
 	var indPermIdMap = make(map[int]bool)
@@ -277,7 +270,7 @@ func (e *mongoEngine) buildRoleCache(roleName string) error {
 		indRoles = append(indRoles, r)
 		rr, _ := e.findRoleByName(r)
 		row := RoleCol.row
-		rr.One(row)
+		rr.One(&row)
 		for _, id := range row.GrantedPermIds {
 			indPermIdMap[id] = true
 		}
@@ -326,19 +319,26 @@ func (e *mongoEngine) HasAnyRole(roleName string, hasRoleNames ...string) bool {
 	}
 }
 
-func (e *mongoEngine) getPermIds(resString string, perms []string) sort.IntSlice {
+func (e *mongoEngine) getPermIds(resString string, perms []string, create bool) (sort.IntSlice, error) {
 	var ids sort.IntSlice
+	var err error
 	for _, p := range perms {
-		id, _ := e.GetPerm(p, resString, true)
-		ids = append(ids, id)
+		id, exist := e.GetPerm(p, resString, create)
+		if ! exist {
+			err=errs.ErrPermNotExist
+		}
+		ids=append(ids, id)
 	}
 	ids.Sort()
-	return ids
+	return ids, err
 }
 
 func (e *mongoEngine) Decision(roleName string, res string, perms ...string) bool {
+	permids, err := e.getPermIds(res, perms, false)
+	if err == errs.ErrPermNotExist {
+		return false
+	}
 	e.buildRoleCache(roleName)
-	permids := e.getPermIds(res, perms)
 	q := e.C(RoleCol.name).Find(M{"_id": roleName, "indirectgrants.permids": M{"$all": permids}})
 	if n, err := q.Count(); err != nil || n != 1 {
 		return false
@@ -348,5 +348,39 @@ func (e *mongoEngine) Decision(roleName string, res string, perms ...string) boo
 }
 
 func (e *mongoEngine) DecisionEx(roleName string, res string, perms ...string) bool {
+	if e.Decision(roleName, res, perms...) {
+		return true
+	}
+	if err :=e.C(RoleCol.name).FindId(roleName).One(&RoleCol.row); err != nil {
+		return  false
+	}
+	permids := RoleCol.row.IndirectGrants.PermIds
+	r1, err := resource.Parse(res)
+	if err != nil {
+		panic(err)
+	}
+	pm := new(map[string][]resource.Resource)
+	for _, pid := range permids {
+		if err := e.C(PermCol.name).Find(M{"id": pid}).One(&PermCol.row); err != nil {
+			continue
+		}
+		r2, err := resource.Parse(PermCol.row.Perm.Resource.String)
+		if err != nil {
+			continue
+		}
+		pm[PermCol.row.Perm.PermName]=append(pm[PermCol.row.Perm.PermName], r2)
+	}
+	for perm := range perms {
+		found :=false
+		for r3 := range pm[perm] {
+			if r3.Contains(r1) {
+				found=true
+				break
+			}
+		}
+		if ! found {
+			return false
+		}
+	}
 	return true
 }

@@ -4,33 +4,41 @@ import (
 	"github.com/shavac/go.sec/errs"
 	"gopkg.in/mgo.v2"
 	"testing"
+	"math/rand"
+	"fmt"
+	"time"
 )
 
-var e *mongoEngine
-
-func init() {
+func newdb() *mongoEngine{
 	sess, err := mgo.Dial("localhost")
 	if err != nil {
 		panic("cannot connect to localhost")
 	}
-	db := sess.DB("rbac")
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	db := sess.DB(fmt.Sprintf("rbac_%d", r.Int()))
 	p, err := Init(db)
 	if err != nil {
 		panic("Initializing")
 	}
-	e = p.(*mongoEngine)
+	return p.(*mongoEngine)
+}
+func deldb(e *mongoEngine) {
+	e.DropDatabase()
 }
 
 func TestSequence(t *testing.T) {
+	e:=newdb()
 	seq := e.currentId()
 	for i := seq; i < seq+5; i++ {
 		if e.nextId() != i+1 {
 			t.Fatal("nextSerial failed at seq ", i)
 		}
 	}
+	deldb(e)
 }
 
 func TestGetDropRole(t *testing.T) {
+	e:=newdb()
 	id, tp, _ := e.GetRole("hr_mgr", true)
 	id2, tp2, ex := e.GetRole("hr_mgr", false)
 	e.GetRole("ceo", false)
@@ -45,9 +53,11 @@ func TestGetDropRole(t *testing.T) {
 	if err := e.DropRole("ceo"); err != nil {
 		t.Fatal("drop role error:", err.Error())
 	}
+	deldb(e)
 }
 
 func TestGrantRevokeRole(t *testing.T) {
+	e:=newdb()
 	if err := e.GrantRole("hr_mgr", "hr_staff", "staff"); err != nil {
 		t.Fatal("error grant role:", err.Error())
 	}
@@ -57,25 +67,11 @@ func TestGrantRevokeRole(t *testing.T) {
 	if err := e.RevokeRole("hr_mgr", "hr_staff"); err != nil {
 		t.Fatal("error revoke role:", err.Error())
 	}
+	deldb(e)
 }
-
-/*
-func (e *mongoEngine) clear() {
-	e.C(RoleCol.name).DropCollection()
-	e.C(SeqCol.name).DropCollection()
-}
-
-func (e *mongoEngine) reset() {
-	e.clear()
-	rp, _ :=Init(e.Database)
-	e=rp.(*mongoEngine)
-}
-
-*/
 
 func TestHasAllAnyRole(t *testing.T) {
-	e.GetRole("cfo", true)
-	e.GetRole("cto", true)
+	e:=newdb()
 	if err := e.GrantRole("ceo", "hr_manager", "staff"); err != nil {
 		t.Fatal("error grant role:", err.Error())
 	}
@@ -100,9 +96,11 @@ func TestHasAllAnyRole(t *testing.T) {
 	if !e.HasAnyRole("ceo", "cfo", "hr_staff") {
 		t.Fatal("ceo should NOT have role 'cfo' but have hr_staff")
 	}
+	deldb(e)
 }
 
 func TestGetPerm(t *testing.T) {
+	e:=newdb()
 	if err := e.DropPerm("select", "employee"); err != nil && err != errs.ErrPermNotExist {
 		t.Fatal("error drop perm", err.Error())
 	}
@@ -115,25 +113,22 @@ func TestGetPerm(t *testing.T) {
 	if _, exists := e.GetPerm("select", "employee", true); !exists {
 		t.Fatal("error get perm, should exist")
 	}
+	deldb(e)
 }
 
 func TestGrantRevokePerm(t *testing.T) {
+	e:=newdb()
 	if err := e.GrantPerm("hr_mgr", "employee", "delete", "update"); err != nil {
 		t.Fatal("err grant perm")
 	}
 	if err := e.RevokePerm("hr_mgr", "employee", "delete"); err != nil {
 		t.Fatal("err revoke perm")
 	}
+	deldb(e)
 }
 
 func TestDecision(t *testing.T) {
-	e.DropRole("ceo")
-	e.DropRole("hr_mgr")
-	e.DropRole("acct_mgr")
-	e.DropRole("hr_stf")
-	e.DropRole("staff")
-	e.DropRole("cto")
-	e.DropRole("cfo")
+	e:=newdb()
 	e.GrantRole("ceo", "hr_mgr")
 	e.GrantRole("hr_mgr", "hr_stf")
 	e.GrantRole("cfo", "acct_mgr")
@@ -154,4 +149,5 @@ func TestDecision(t *testing.T) {
 	if e.Decision("ceo", "employee", "insert", "delete", "update", "select") {
 		t.Fatal("hr_mgr role had beed dropped, ceo should not has permission of update employee")
 	}
+	deldb(e)
 }
