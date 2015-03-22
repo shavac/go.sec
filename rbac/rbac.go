@@ -2,13 +2,17 @@ package rbac
 
 import (
 	"github.com/shavac/go.sec/rbac/engine"
-	"github.com/shavac/go.sec/rbac/engine/mem"
 )
 
 var (
-	egn engine.RBACProvider = mem.Init()
-	//currentSerial                     = egn.CurrentSerial()
+	egn engine.RBACProvider
 )
+
+func Init(conn interface{}) error {
+	e, err := engine.Factory(conn)
+	egn=e
+	return err
+}
 
 func HasRole(roleName string, hasRoleName string) bool {
 	return egn.HasAllRole(roleName, hasRoleName)

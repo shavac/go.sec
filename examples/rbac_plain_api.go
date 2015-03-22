@@ -2,10 +2,22 @@ package main
 
 import (
 	"github.com/shavac/go.sec/rbac"
+	_ "github.com/shavac/go.sec/rbac/engine"
+	_ "github.com/shavac/go.sec/rbac/engine/mongo"
 	"log"
+	"gopkg.in/mgo.v2"
+	"time"
+	"math/rand"
+	"fmt"
 )
 
 func main() {
+	sess, err := mgo.Dial("localhost")
+	if err != nil {
+		panic("cannot connect to localhost")
+	}
+	db := sess.DB(fmt.Sprintf("rbac_%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int31n))
+	rbac.Init(db)
 	rbac.NewUser("user1")
 	rbac.NewUser("user2")
 	rbac.NewUser("user3")
@@ -45,5 +57,6 @@ func main() {
 	if rbac.DecisionEx("ceo",employee,"delete") && rbac.DecisionEx("hr_mgr",employee,"delete"){
 		log.Fatal("hr_mgr is revoked delete employee permission and ceo should not have it,eather")
 	}
+	db.DropDatabase()
 	println("all test ok")
 }

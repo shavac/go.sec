@@ -1,11 +1,23 @@
 package main
 
 import (
-	"github.com/shavac/go.sec/rbac"
-	"log"
+    "github.com/shavac/go.sec/rbac"
+    _ "github.com/shavac/go.sec/rbac/engine"
+    _ "github.com/shavac/go.sec/rbac/engine/mongo"
+    "log"
+    "gopkg.in/mgo.v2"
+    "time"
+    "math/rand"
+    "fmt"
 )
 
 func main() {
+	sess, err := mgo.Dial("localhost")
+	if err != nil {
+		panic("cannot connect to localhost")
+	}
+	db := sess.DB(fmt.Sprintf("rbac_%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int31n))
+	rbac.Init(db)
 	user1, _ := rbac.NewUser("user1")
 	user2, _ := rbac.NewUser("user2")
 	user3, _ := rbac.NewUser("user3")
@@ -49,5 +61,6 @@ func main() {
 	if !rbac.DecisionEx("user1", "", "start_meeting") {
 		log.Fatal("user1 is ceo and can start meeting")
 	}
+	db.DropDatabase()
 	println("all test ok")
 }

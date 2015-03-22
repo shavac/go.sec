@@ -172,7 +172,7 @@ func (e *mongoEngine) SetRoleType(roleName string, rbacType int) error {
 }
 
 func (e *mongoEngine) DropRole(roleName string) error {
-	if err := e.Roles.Update(
+	if _, err := e.Roles.UpdateAll(
 		M{},
 		M{"$pullAll": M{"grantedroles": []string{roleName}}},
 	); err != nil {

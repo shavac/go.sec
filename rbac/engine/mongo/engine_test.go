@@ -15,7 +15,7 @@ func newdb() *mongoEngine{
 	if err != nil {
 		panic("cannot connect to localhost")
 	}
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+    r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	db := sess.DB(fmt.Sprintf("rbac_%d", r.Int()))
 	p, err := Init(db)
 	if err != nil {
