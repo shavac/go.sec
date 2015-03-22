@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"fmt"
 	"time"
+	. "github.com/shavac/go.sec/rbac/engine"
 )
 
 func newdb() *mongoEngine{
@@ -110,8 +111,8 @@ func TestGetPerm(t *testing.T) {
 	if _, exists := e.GetPerm("select", "employee", true); exists {
 		t.Fatal("error get perm")
 	}
-	if _, exists := e.GetPerm("select", "employee", true); !exists {
-		t.Fatal("error get perm, should exist")
+	if id, exists := e.GetPerm("select", "employee", true); !exists {
+		t.Fatal("error get perm, should exist. id=", id)
 	}
 	deldb(e)
 }
@@ -148,6 +149,61 @@ func TestDecision(t *testing.T) {
 	e.DropRole("hr_mgr")
 	if e.Decision("ceo", "employee", "insert", "delete", "update", "select") {
 		t.Fatal("hr_mgr role had beed dropped, ceo should not has permission of update employee")
+	}
+	deldb(e)
+}
+func TestRBAC2Decision(t *testing.T) {
+	e := newdb()
+	e.GrantRole("admin", "sports_admin")
+	e.GrantRole("admin", "finance_admin")
+	e.GrantRole("admin", "visitor")
+	e.GrantRole("sports_admin", "visitor")
+	e.GrantRole("finance_admin", "visitor")
+	e.GrantPerm("visitor", "", "GET") //global GET permission
+	e.GrantPerm("sports_admin", "http://sina.com/sports", "UPLOAD", "REMOVE")
+	e.GrantPerm("finance_admin", "http://sina.com/finance", "UPLOAD", "REMOVE")
+	if !e.DecisionEx("admin", "http://sina.com/sports/nba", "UPLOAD", "REMOVE", "GET") {
+		t.Fatal("admin should have all permission")
+	}
+	if !e.DecisionEx("sports_admin", "http://sina.com/finance/fond", "GET") {
+		t.Fatal("sports_admin should have GET any page permission")
+	}
+	if !e.DecisionEx("sports_admin", "http://sohu.com", "GET") {
+		t.Fatal("sports_admin should have GET any page permission")
+	}
+	if e.DecisionEx("sports_admin:", "http://sohu.com/finance", "REMOVE") {
+		t.Fatal("sports_admin should not have REMOVE finance permission")
+	}
+	if e.DecisionEx("admin", "http://sina.com", "DOWNLOAD") {
+		t.Fatal("admin should not have un-existent permission")
+	}
+	deldb(e)
+}
+
+
+
+func TestUtil(t *testing.T) {
+	e:=newdb()
+	rd := "temporary role"
+	pd := "temporary perm"
+	if e.SetDesc(-1, "") {
+		t.Fatal("setting non existance desc")
+	}
+	rid, _, ex := e.GetRole("tmpuser", true)
+	e.SetRoleType("tmpuser", USER)
+	if ex {
+		t.Fatal("tmpuser type exists, exist=", ex)
+	}
+	e.SetDesc(rid, rd)
+	e.GrantPerm("tmpuser", "tmpres", "tmpperm")
+	println("grant ok")
+	pid, pex := e.GetPerm("tmpperm","tmpres", false)
+	if pid <0 || ! pex {
+		t.Fatal("tmpperm id error or not exists. id =", pid, "exist=", pex)
+	}
+	e.SetDesc(pid, pd)
+	if e.GetDesc(rid) != rd || e.GetDesc(pid) != pd {
+		t.Fatal("get desc error")
 	}
 	deldb(e)
 }
