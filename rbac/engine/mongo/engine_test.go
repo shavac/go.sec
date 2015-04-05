@@ -1,21 +1,21 @@
 package mongo
 
 import (
-	"github.com/shavac/go.sec/errs"
-	"gopkg.in/mgo.v2"
-	"testing"
-	"math/rand"
 	"fmt"
-	"time"
+	"github.com/shavac/go.sec/errs"
 	. "github.com/shavac/go.sec/rbac/engine"
+	"gopkg.in/mgo.v2"
+	"math/rand"
+	"testing"
+	"time"
 )
 
-func newdb() *mongoEngine{
+func newdb() *mongoEngine {
 	sess, err := mgo.Dial("localhost")
 	if err != nil {
 		panic("cannot connect to localhost")
 	}
-    r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	db := sess.DB(fmt.Sprintf("rbac_%d", r.Int()))
 	p, err := Init(db)
 	if err != nil {
@@ -28,7 +28,7 @@ func deldb(e *mongoEngine) {
 }
 
 func TestSequence(t *testing.T) {
-	e:=newdb()
+	e := newdb()
 	seq := e.currentId()
 	for i := seq; i < seq+5; i++ {
 		if e.nextId() != i+1 {
@@ -39,7 +39,7 @@ func TestSequence(t *testing.T) {
 }
 
 func TestGetDropRole(t *testing.T) {
-	e:=newdb()
+	e := newdb()
 	id, tp, _ := e.GetRole("hr_mgr", true)
 	id2, tp2, ex := e.GetRole("hr_mgr", false)
 	e.GetRole("ceo", false)
@@ -58,7 +58,7 @@ func TestGetDropRole(t *testing.T) {
 }
 
 func TestGrantRevokeRole(t *testing.T) {
-	e:=newdb()
+	e := newdb()
 	if err := e.GrantRole("hr_mgr", "hr_staff", "staff"); err != nil {
 		t.Fatal("error grant role:", err.Error())
 	}
@@ -72,7 +72,7 @@ func TestGrantRevokeRole(t *testing.T) {
 }
 
 func TestHasAllAnyRole(t *testing.T) {
-	e:=newdb()
+	e := newdb()
 	if err := e.GrantRole("ceo", "hr_manager", "staff"); err != nil {
 		t.Fatal("error grant role:", err.Error())
 	}
@@ -101,7 +101,7 @@ func TestHasAllAnyRole(t *testing.T) {
 }
 
 func TestGetPerm(t *testing.T) {
-	e:=newdb()
+	e := newdb()
 	if err := e.DropPerm("select", "employee"); err != nil && err != errs.ErrPermNotExist {
 		t.Fatal("error drop perm", err.Error())
 	}
@@ -118,7 +118,7 @@ func TestGetPerm(t *testing.T) {
 }
 
 func TestGrantRevokePerm(t *testing.T) {
-	e:=newdb()
+	e := newdb()
 	if err := e.GrantPerm("hr_mgr", "employee", "delete", "update"); err != nil {
 		t.Fatal("err grant perm")
 	}
@@ -129,7 +129,7 @@ func TestGrantRevokePerm(t *testing.T) {
 }
 
 func TestDecision(t *testing.T) {
-	e:=newdb()
+	e := newdb()
 	e.GrantRole("ceo", "hr_mgr")
 	e.GrantRole("hr_mgr", "hr_stf")
 	e.GrantRole("cfo", "acct_mgr")
@@ -137,10 +137,10 @@ func TestDecision(t *testing.T) {
 	e.GrantPerm("hr_mgr", "employee", "update", "delete")
 	e.GrantPerm("hr_stf", "employee", "select", "insert")
 	e.GrantPerm("acct_mgr", "employee", "update")
-	if ! e.Decision("ceo", "employee", "insert", "delete", "update", "select") {
+	if !e.Decision("ceo", "employee", "insert", "delete", "update", "select") {
 		t.Fatal("ceo should has permission of update employee")
 	}
-	if ! e.Decision("hr_mgr", "employee", "select", "delete", "update", "insert") {
+	if !e.Decision("hr_mgr", "employee", "select", "delete", "update", "insert") {
 		t.Fatal("hr_mgr should has permission of idus employee")
 	}
 	if e.Decision("hr_stf", "employee", "insert", "delete", "update", "select") {
@@ -180,10 +180,8 @@ func TestRBAC2Decision(t *testing.T) {
 	deldb(e)
 }
 
-
-
 func TestUtil(t *testing.T) {
-	e:=newdb()
+	e := newdb()
 	rd := "temporary role"
 	pd := "temporary perm"
 	if e.SetDesc(-1, "") {
@@ -197,8 +195,8 @@ func TestUtil(t *testing.T) {
 	e.SetDesc(rid, rd)
 	e.GrantPerm("tmpuser", "tmpres", "tmpperm")
 	println("grant ok")
-	pid, pex := e.GetPerm("tmpperm","tmpres", false)
-	if pid <0 || ! pex {
+	pid, pex := e.GetPerm("tmpperm", "tmpres", false)
+	if pid < 0 || !pex {
 		t.Fatal("tmpperm id error or not exists. id =", pid, "exist=", pex)
 	}
 	e.SetDesc(pid, pd)

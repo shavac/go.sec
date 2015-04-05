@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/shavac/go.sec/rbac"
-	_ "github.com/shavac/go.sec/rbac/engine"
 	_ "github.com/shavac/go.sec/rbac/engine/mongo"
 	"log"
 	"gopkg.in/mgo.v2"

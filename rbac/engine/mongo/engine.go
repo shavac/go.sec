@@ -40,7 +40,7 @@ type RoleRecord struct {
 	}
 }
 
-func NewRole() *RoleRecord {
+func NewRoleRecord() *RoleRecord {
 	return &RoleRecord{}
 }
 
@@ -146,7 +146,7 @@ func (e *mongoEngine) findRoleByName(roleName string) (*mgo.Query, error) {
 
 func (e *mongoEngine) GetRole(roleName string, create bool) (int, int, bool) {
 	var exist bool
-	role := NewRole()
+	role := NewRoleRecord()
 	q, err := e.findRoleByName(roleName)
 	if err == errs.ErrRoleNotExist {
 		exist = false
@@ -157,6 +157,8 @@ func (e *mongoEngine) GetRole(roleName string, create bool) (int, int, bool) {
 			e.Roles.Insert(role)
 			e.IncScn()
 		}
+	} else if err != nil {
+		panic(err.Error())
 	} else {
 		exist = true
 		q.One(role)
@@ -271,7 +273,7 @@ func (e *mongoEngine) RevokePerm(roleName string, resString string, perms ...str
 
 func (e *mongoEngine) SetDesc(id int, desc string) bool {
 	if nr, _ := e.Roles.Find(M{"id": id}).Count(); nr == 0 {
-		if np,_ := e.Perms.Find(M{"id": id}).Count(); np ==0 {
+		if np, _ := e.Perms.Find(M{"id": id}).Count(); np == 0 {
 			return false
 		}
 	}
@@ -288,7 +290,7 @@ func (e *mongoEngine) GetDesc(id int) string {
 }
 
 func (e *mongoEngine) buildRoleCache(roleName string) error {
-	role := NewRole()
+	role := NewRoleRecord()
 	q, err := e.findRoleByName(roleName)
 	if err != nil {
 		return err
@@ -301,7 +303,7 @@ func (e *mongoEngine) buildRoleCache(roleName string) error {
 	var indPermIds sort.IntSlice
 	var indPermIdMap = make(map[int]bool)
 	f := func(rn string) bool {
-		r := NewRole()
+		r := NewRoleRecord()
 		indRoles = append(indRoles, rn)
 		e.Roles.FindId(rn).One(r)
 		for _, id := range r.GrantedPermIds {
@@ -328,7 +330,7 @@ func (e *mongoEngine) buildRoleCache(roleName string) error {
 }
 
 func (e *mongoEngine) grantedRoles(roleName string) []string {
-	role := NewRole()
+	role := NewRoleRecord()
 	e.C(RoleCol).FindId(roleName).One(role)
 	return role.GrantedRoles
 }
@@ -389,7 +391,7 @@ func (e *mongoEngine) DecisionEx(roleName string, res string, perms ...string) b
 		}
 	}
 	e.buildRoleCache(roleName)
-	role := NewRole()
+	role := NewRoleRecord()
 	if err := e.Roles.FindId(roleName).One(role); err != nil {
 		return false
 	}
